@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.0
 	github.com/redis/go-redis/v9 v9.17.3
+	github.com/temoto/robotstxt v1.1.2
 	golang.org/x/net v0.49.0
 )
 
@@ -29,5 +30,4 @@ require (
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/temoto/robotstxt v1.1.2 // indirect
 )
