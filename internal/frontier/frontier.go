@@ -11,4 +11,7 @@ type Frontier interface {
 	Pop(ctx context.Context) (shared.URLTarget, error)
 	Complete(ctx context.Context, id string) error
 	PushDLQ(ctx context.Context, item shared.URLTarget, errReason string) error
+
+	PushToParser(ctx context.Context, msg shared.CrawlResult) error
+	PopFromParser(ctx context.Context) (shared.CrawlResult, error)
 }

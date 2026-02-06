@@ -1,7 +1,6 @@
 package crawler
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,11 +28,10 @@ type Coordinator struct {
 	workers  int
 }
 
-func NewCoordinator(f frontier.Frontier, fetch shared.Fetcher, p shared.Parser, l shared.RateLimiter, s shared.Storage, r *robots.RobotsChecker, workerCount int) *Coordinator {
+func NewCoordinator(f frontier.Frontier, fetch shared.Fetcher, l shared.RateLimiter, s shared.Storage, r *robots.RobotsChecker, workerCount int) *Coordinator {
 	return &Coordinator{
 		frontier: f,
 		fetcher:  fetch,
-		parser:   p,
 		limiter:  l,
 		storage:  s,
 		robots:   r,
@@ -73,7 +71,7 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				continue
 			}
 
-			domain, err := getDomain(urlTarget.URL)
+			domain, err := shared.GetDomain(urlTarget.URL)
 			if err != nil {
 				log.Printf("Invalid URL in queue: %s", urlTarget.URL)
 				c.frontier.Complete(ctx, urlTarget.ID)
@@ -117,38 +115,23 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 					return
 				}
 
-				if err := c.storage.Save(ctx, urlTarget.URL, bodyBytes); err != nil {
+				s3Key := shared.CleanKey(urlTarget.URL)
+				if err := c.storage.Save(ctx, s3Key, bodyBytes); err != nil {
 					log.Printf("Worker %d storage error: %v", id, err)
+					c.frontier.PushDLQ(ctx, urlTarget, "Storage Upload Failed")
 					// maybe stop? will come back to this
 				}
 
-				// process result
-				parsed, err := c.parser.Parse(ctx, bytes.NewReader(bodyBytes))
-				if err != nil {
-					log.Printf("Worker %d parse error: %v", id, err)
-					return
+				// Push to Parser Queue
+				msg := shared.CrawlResult{
+					URL:   urlTarget.URL,
+					S3Key: s3Key,
+					Depth: urlTarget.Depth,
 				}
-
-				if len(parsed.Links) > 0 {
-					var absoluteLinks []string
-					for _, link := range parsed.Links {
-						abs, err := ResolveURL(urlTarget.URL, link)
-						if err != nil {
-							continue
-						}
-
-						isSameDomain, err := compareDomains(urlTarget.URL, abs)
-						if err != nil {
-							continue
-						}
-
-						if isSameDomain {
-							absoluteLinks = append(absoluteLinks, abs)
-						}
-					}
-					if len(absoluteLinks) > 0 {
-						c.frontier.Push(ctx, absoluteLinks, urlTarget.Depth+1)
-					}
+				if err := c.frontier.PushToParser(ctx, msg); err != nil {
+					log.Printf("Failed to push to parser queue: %v", err)
+				} else {
+					log.Printf("Worker %d: Fetched & Pushed %s", id, urlTarget.URL)
 				}
 
 				// HandleParsed(parsed, urlTarget.URL)
@@ -157,41 +140,6 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 			c.frontier.Complete(ctx, urlTarget.ID)
 		}
 	}
-}
-
-func ResolveURL(parent, link string) (string, error) {
-	u, err := url.Parse(link)
-	if err != nil {
-		return "", nil
-	}
-
-	base, err := url.Parse(parent)
-	if err != nil {
-		return "", nil
-	}
-
-	return base.ResolveReference(u).String(), nil
-}
-
-func getDomain(link string) (string, error) {
-	u, err := url.Parse(link)
-	if err != nil {
-		return "", err
-	}
-	return u.Host, nil
-}
-
-func compareDomains(parent, child string) (bool, error) {
-	parentDomain, err := getDomain(parent)
-	if err != nil {
-		return false, err
-	}
-	childDomain, err := getDomain(child)
-	if err != nil {
-		return false, err
-	}
-
-	return parentDomain == childDomain, nil
 }
 
 func HandleParsed(parsedData shared.ParsedData, link string) error {

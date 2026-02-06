@@ -9,7 +9,6 @@ import (
 	"github.com/elijahthis/baby-crawler/internal/crawler"
 	"github.com/elijahthis/baby-crawler/internal/frontier"
 	"github.com/elijahthis/baby-crawler/internal/limiter"
-	"github.com/elijahthis/baby-crawler/internal/parser"
 	"github.com/elijahthis/baby-crawler/internal/robots"
 	"github.com/elijahthis/baby-crawler/internal/storage"
 	"github.com/redis/go-redis/v9"
@@ -33,9 +32,6 @@ func main() {
 		Retries: 3,
 	}
 
-	parser := parser.NewHTMLParser()
-	log.Println("Fetcher created")
-
 	redisLimiter := limiter.NewRedisRateLimiter(rdb, 1*time.Second)
 
 	store, err := storage.NewS3Storage(context.Background(), "crawled-data", "http://localhost:9000", "admin", "password")
@@ -50,7 +46,7 @@ func main() {
 	}
 
 	// setup coordinator
-	coord := crawler.NewCoordinator(fr, fetcher, parser, redisLimiter, store, robotChecker, 10)
+	coord := crawler.NewCoordinator(fr, fetcher, redisLimiter, store, robotChecker, 10)
 	log.Println("Starting fetch")
 	coord.Run(context.Background())
 }

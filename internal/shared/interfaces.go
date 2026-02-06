@@ -17,6 +17,7 @@ type RateLimiter interface {
 }
 type Storage interface {
 	Save(ctx context.Context, key string, data []byte) error
+	Load(ctx context.Context, key string) ([]byte, error)
 }
 
 // structs
@@ -35,4 +36,11 @@ type FetchResult struct {
 type ParsedData struct {
 	Text  string
 	Links []string
+}
+
+type CrawlResult struct {
+	URL     string `json:"url"`
+	S3Key   string `json:"s3_key"`
+	Depth   int    `json:"depth"`
+	SavedAt string `json:"saved_at"`
 }

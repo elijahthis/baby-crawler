@@ -12,10 +12,11 @@ import (
 )
 
 type RedisFrontier struct {
-	client     *redis.Client
-	queueKey   string
-	visitedKey string
-	dlqKey     string
+	client         *redis.Client
+	queueKey       string
+	visitedKey     string
+	dlqKey         string
+	parserQueueKey string
 }
 
 type DeadLetter struct {
@@ -26,10 +27,11 @@ type DeadLetter struct {
 
 func NewRedisFrontier(rdb *redis.Client) *RedisFrontier {
 	return &RedisFrontier{
-		client:     rdb,
-		queueKey:   "crawler:queue",
-		visitedKey: "crawler:visited",
-		dlqKey:     "crawler:dlq",
+		client:         rdb,
+		queueKey:       "crawler:queue",
+		visitedKey:     "crawler:visited",
+		dlqKey:         "crawler:dlq",
+		parserQueueKey: "crawler:parser_queue",
 	}
 }
 
@@ -97,4 +99,30 @@ func (f *RedisFrontier) PushDLQ(ctx context.Context, item shared.URLTarget, errR
 	}
 
 	return f.client.RPush(ctx, f.dlqKey, dlData).Err()
+}
+
+func (f *RedisFrontier) PushToParser(ctx context.Context, msg shared.CrawlResult) error {
+	msgJson, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	return f.client.RPush(ctx, f.parserQueueKey, msgJson).Err()
+}
+
+func (f *RedisFrontier) PopFromParser(ctx context.Context) (shared.CrawlResult, error) {
+	data, err := f.client.LPop(ctx, f.parserQueueKey).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return shared.CrawlResult{}, ErrQueueEmpty
+		}
+		return shared.CrawlResult{}, err
+	}
+
+	var val shared.CrawlResult
+	if err := json.Unmarshal([]byte(data), &val); err != nil {
+		return shared.CrawlResult{}, err
+	}
+
+	return val, nil
 }

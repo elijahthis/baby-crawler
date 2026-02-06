@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -50,7 +50,7 @@ func NewS3Storage(ctx context.Context, bucket string, endpoint, user, password s
 }
 
 func (s *S3Storage) Save(ctx context.Context, key string, data []byte) error {
-	key = cleanKey(key)
+	// key = shared.CleanKey(key)
 
 	log.Printf("Key: %s\n\n", key)
 
@@ -66,14 +66,15 @@ func (s *S3Storage) Save(ctx context.Context, key string, data []byte) error {
 	return err
 }
 
-func cleanKey(key string) string {
-	key = strings.TrimPrefix(key, "http://")
-	key = strings.TrimPrefix(key, "https://")
-
-	if strings.HasSuffix(key, "/") {
-		key += "index.html"
-	} else if !strings.Contains(key, ".") {
-		key += "/index.html"
+func (s *S3Storage) Load(ctx context.Context, key string) ([]byte, error) {
+	resp, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, err
 	}
-	return key
+	defer resp.Body.Close()
+
+	return io.ReadAll(resp.Body)
 }
