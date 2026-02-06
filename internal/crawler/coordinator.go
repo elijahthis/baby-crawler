@@ -95,12 +95,17 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				log.Printf("Worker %d fetching: %s", id, urlTarget.URL)
 				resp, err := c.fetcher.Fetch(ctx, urlTarget.URL)
 				if err != nil {
-					log.Printf("Worker %d error: %v", id, err)
+					log.Printf("Worker %d Failed Final: %v", id, err)
 					// retry logic. Dead letter queue
+					if dlqErr := c.frontier.PushDLQ(ctx, urlTarget, err.Error()); dlqErr != nil {
+						log.Printf("Failed to push to DLQ: %v", dlqErr)
+						return
+					}
 					return
 				}
 				if resp.Body == nil {
 					log.Printf("Worker %d error: Body is nil for %s", id, urlTarget.URL)
+					c.frontier.PushDLQ(ctx, urlTarget, "Nil Body Response")
 					return
 				}
 				defer resp.Body.Close()
