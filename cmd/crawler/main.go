@@ -10,9 +10,12 @@ import (
 	"github.com/elijahthis/baby-crawler/internal/frontier"
 	"github.com/elijahthis/baby-crawler/internal/limiter"
 	"github.com/elijahthis/baby-crawler/internal/parser"
+	"github.com/elijahthis/baby-crawler/internal/robots"
 	"github.com/elijahthis/baby-crawler/internal/storage"
 	"github.com/redis/go-redis/v9"
 )
+
+var userAgent = "BabyCrawler/1.0"
 
 func main() {
 	rdb := redis.NewClient(&redis.Options{
@@ -24,7 +27,7 @@ func main() {
 	fr := frontier.NewRedisFrontier(rdb)
 	log.Println("Frontier created")
 
-	baseFetcher := crawler.NewWebFetcher("BabyCrawler/1.0", 5*time.Second)
+	baseFetcher := crawler.NewWebFetcher(userAgent, 5*time.Second)
 	fetcher := &crawler.RetryFetcher{
 		Base:    baseFetcher,
 		Retries: 3,
@@ -40,12 +43,14 @@ func main() {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
 
+	robotChecker := robots.NewRobotsChecker(userAgent, 5*time.Second)
+
 	if err := fr.Push(context.Background(), []string{"https://grpc.io/docs/"}, 0); err != nil {
 		fmt.Printf("Error: %s", err.Error())
 	}
 
 	// setup coordinator
-	coord := crawler.NewCoordinator(fr, fetcher, parser, redisLimiter, store, 10)
+	coord := crawler.NewCoordinator(fr, fetcher, parser, redisLimiter, store, robotChecker, 10)
 	log.Println("Starting fetch")
 	coord.Run(context.Background())
 }

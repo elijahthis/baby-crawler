@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/elijahthis/baby-crawler/internal/frontier"
+	"github.com/elijahthis/baby-crawler/internal/robots"
 	"github.com/elijahthis/baby-crawler/internal/shared"
 )
 
@@ -24,16 +25,18 @@ type Coordinator struct {
 	parser   shared.Parser
 	limiter  shared.RateLimiter
 	storage  shared.Storage
+	robots   *robots.RobotsChecker
 	workers  int
 }
 
-func NewCoordinator(f frontier.Frontier, fetch shared.Fetcher, p shared.Parser, l shared.RateLimiter, s shared.Storage, workerCount int) *Coordinator {
+func NewCoordinator(f frontier.Frontier, fetch shared.Fetcher, p shared.Parser, l shared.RateLimiter, s shared.Storage, r *robots.RobotsChecker, workerCount int) *Coordinator {
 	return &Coordinator{
 		frontier: f,
 		fetcher:  fetch,
 		parser:   p,
 		limiter:  l,
 		storage:  s,
+		robots:   r,
 		workers:  workerCount,
 	}
 }
@@ -79,6 +82,12 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 
 			if err := c.limiter.Wait(ctx, domain); err != nil {
 				log.Printf("Rate Limiter error: %v", err)
+				continue
+			}
+
+			if !c.robots.IsAllowed(urlTarget.URL) {
+				log.Printf("Blocked by robots.txt: %s", urlTarget.URL)
+				c.frontier.Complete(ctx, urlTarget.ID)
 				continue
 			}
 
