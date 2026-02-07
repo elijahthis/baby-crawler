@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/elijahthis/baby-crawler/internal/shared"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 )
 
 type RedisFrontier struct {
@@ -40,7 +40,7 @@ func (f *RedisFrontier) Push(ctx context.Context, urls []string, depth int) erro
 	for _, u := range urls {
 		isNew, err := f.client.SAdd(ctx, f.visitedKey, u).Result()
 		if err != nil {
-			fmt.Printf("There was an error: %v\n", err)
+			log.Error().Err(err).Msgf("Redis error: Unable to add %s to visited set", u)
 			return err
 		}
 
@@ -59,7 +59,7 @@ func (f *RedisFrontier) Push(ctx context.Context, urls []string, depth int) erro
 			if err := f.client.RPush(ctx, f.queueKey, targetJson).Err(); err != nil {
 				return err
 			}
-			fmt.Printf("Pushed %s to fr\n", u)
+			log.Info().Msgf("Pushed %s to fr\n", u)
 		}
 	}
 	return nil

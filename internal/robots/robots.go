@@ -1,12 +1,12 @@
 package robots
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/temoto/robotstxt"
 )
 
@@ -28,7 +28,7 @@ func NewRobotsChecker(userAgent string, timeout time.Duration) *RobotsChecker {
 func (r *RobotsChecker) IsAllowed(targetURL string) bool {
 	u, err := url.Parse(targetURL)
 	if err != nil {
-		fmt.Println("Error: Unable to parse targetURL")
+		log.Error().Err(err).Msgf("Unable to parse targetURL %s", targetURL)
 		return false
 	}
 
@@ -62,7 +62,7 @@ func (r *RobotsChecker) fetchRobotsTxt(scheme, domain string) *robotstxt.Group {
 	robotsURL := scheme + "://" + domain + "/robots.txt"
 	resp, err := r.client.Get(robotsURL)
 	if err != nil {
-		fmt.Println("No robots.txt found")
+		log.Error().Err(err).Msgf("No robots.txt found")
 		return nil
 	}
 

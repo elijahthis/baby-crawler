@@ -3,14 +3,13 @@ package storage
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
-	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/rs/zerolog/log"
 )
 
 type S3Storage struct {
@@ -52,7 +51,7 @@ func NewS3Storage(ctx context.Context, bucket string, endpoint, user, password s
 func (s *S3Storage) Save(ctx context.Context, key string, data []byte) error {
 	// key = shared.CleanKey(key)
 
-	log.Printf("Key: %s\n\n", key)
+	log.Info().Msgf("Saving to S3. Key: %s\n\n", key)
 
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
@@ -61,7 +60,7 @@ func (s *S3Storage) Save(ctx context.Context, key string, data []byte) error {
 	})
 
 	if err == nil {
-		fmt.Printf("Uploaded to S3: %s\n", key)
+		log.Info().Msgf("Uploaded to S3: %s\n", key)
 	}
 	return err
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/elijahthis/baby-crawler/internal/shared"
+	"github.com/rs/zerolog/log"
 )
 
 type WebFetcher struct {
@@ -24,7 +25,8 @@ func NewWebFetcher(userAgent string, timeout time.Duration) *WebFetcher {
 }
 
 func (f *WebFetcher) Fetch(ctx context.Context, url string) (shared.FetchResult, error) {
-	fmt.Println(url)
+	log.Info().Msgf("Fetching %s", url)
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return shared.FetchResult{}, err
@@ -39,7 +41,9 @@ func (f *WebFetcher) Fetch(ctx context.Context, url string) (shared.FetchResult,
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return shared.FetchResult{}, fmt.Errorf("non-200 status code: %d", resp.StatusCode)
+		err := fmt.Errorf("non-200 status code: %d", resp.StatusCode)
+		log.Error().Err(err)
+		return shared.FetchResult{}, err
 	}
 
 	return shared.FetchResult{

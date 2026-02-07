@@ -2,15 +2,23 @@ package main
 
 import (
 	"context"
-	"log"
+	"os"
+	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/elijahthis/baby-crawler/internal/frontier"
 	"github.com/elijahthis/baby-crawler/internal/parser"
+	"github.com/elijahthis/baby-crawler/internal/shared"
 	"github.com/elijahthis/baby-crawler/internal/storage"
 	"github.com/redis/go-redis/v9"
 )
 
 func main() {
+	shared.InitLogger("parser")
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "password", // no password set
@@ -23,11 +31,11 @@ func main() {
 
 	store, err := storage.NewS3Storage(context.Background(), "crawled-data", "http://localhost:9000", "admin", "password")
 	if err != nil {
-		log.Fatalf("Failed to initialize storage: %v", err)
+		log.Fatal().Err(err).Msg("Failed to initialize storage")
 	}
 
 	// setup coordinator
 	coord := parser.NewService(fr, store, htmlParser, 10)
-	log.Println("Starting parser")
+	log.Info().Msg("Starting parser")
 	coord.Run(context.Background())
 }

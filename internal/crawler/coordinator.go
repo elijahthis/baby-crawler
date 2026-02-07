@@ -3,15 +3,15 @@ package crawler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/elijahthis/baby-crawler/internal/frontier"
 	"github.com/elijahthis/baby-crawler/internal/robots"
@@ -51,7 +51,7 @@ func (c *Coordinator) Run(ctx context.Context) {
 	}
 
 	wg.Wait()
-	log.Printf("All workers shut down cleanly")
+	log.Info().Msg("All workers shut down cleanly")
 }
 
 func (c *Coordinator) worker(ctx context.Context, id int) {
@@ -67,24 +67,24 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 					// log.Printf("Error: %s", err.Error())
 					continue
 				}
-				log.Printf("Worker %d frontier error: %v", id, err)
+				log.Error().Err(err).Msgf("Worker %d frontier error:", id)
 				continue
 			}
 
 			domain, err := shared.GetDomain(urlTarget.URL)
 			if err != nil {
-				log.Printf("Invalid URL in queue: %s", urlTarget.URL)
+				log.Error().Err(err).Msgf("Invalid URL in queue: %s", urlTarget.URL)
 				c.frontier.Complete(ctx, urlTarget.ID)
 				continue
 			}
 
 			if err := c.limiter.Wait(ctx, domain); err != nil {
-				log.Printf("Rate Limiter error: %v", err)
+				log.Error().Err(err).Msg("Rate Limiter error: ")
 				continue
 			}
 
 			if !c.robots.IsAllowed(urlTarget.URL) {
-				log.Printf("Blocked by robots.txt: %s", urlTarget.URL)
+				log.Error().Msgf("Blocked by robots.txt: %s", urlTarget.URL)
 				c.frontier.Complete(ctx, urlTarget.ID)
 				continue
 			}
@@ -93,16 +93,16 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				log.Printf("Worker %d fetching: %s", id, urlTarget.URL)
 				resp, err := c.fetcher.Fetch(ctx, urlTarget.URL)
 				if err != nil {
-					log.Printf("Worker %d Failed Final: %v", id, err)
+					log.Error().Err(err).Msgf("Worker %d Failed Final", id)
 					// retry logic. Dead letter queue
 					if dlqErr := c.frontier.PushDLQ(ctx, urlTarget, err.Error()); dlqErr != nil {
-						log.Printf("Failed to push to DLQ: %v", dlqErr)
+						log.Error().Err(dlqErr).Msg("Failed to push to DLQ:")
 						return
 					}
 					return
 				}
 				if resp.Body == nil {
-					log.Printf("Worker %d error: Body is nil for %s", id, urlTarget.URL)
+					log.Error().Msgf("Worker %d error: Body is nil for %s", id, urlTarget.URL)
 					c.frontier.PushDLQ(ctx, urlTarget, "Nil Body Response")
 					return
 				}
@@ -111,13 +111,13 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				// save to s3
 				bodyBytes, err := io.ReadAll(resp.Body)
 				if err != nil {
-					log.Printf("Worker %d read error: %v", id, err)
+					log.Error().Err(err).Msgf("Worker %d read error", id)
 					return
 				}
 
 				s3Key := shared.CleanKey(urlTarget.URL)
 				if err := c.storage.Save(ctx, s3Key, bodyBytes); err != nil {
-					log.Printf("Worker %d storage error: %v", id, err)
+					log.Error().Err(err).Msgf("Worker %d storage error", id)
 					c.frontier.PushDLQ(ctx, urlTarget, "Storage Upload Failed")
 					// maybe stop? will come back to this
 				}
@@ -129,9 +129,9 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 					Depth: urlTarget.Depth,
 				}
 				if err := c.frontier.PushToParser(ctx, msg); err != nil {
-					log.Printf("Failed to push to parser queue: %v", err)
+					log.Error().Err(err).Msgf("Failed to push to parser queue")
 				} else {
-					log.Printf("Worker %d: Fetched & Pushed %s", id, urlTarget.URL)
+					log.Info().Msgf("Worker %d: Fetched & Pushed %s", id, urlTarget.URL)
 				}
 
 				// HandleParsed(parsed, urlTarget.URL)
@@ -145,6 +145,7 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 func HandleParsed(parsedData shared.ParsedData, link string) error {
 	urlObj, err := url.Parse(link)
 	if err != nil {
+		log.Error().Err(err).Msgf("Error parsing link: %s\n", link)
 		return err
 	}
 	filePath := urlObj.Path
@@ -152,18 +153,20 @@ func HandleParsed(parsedData shared.ParsedData, link string) error {
 
 	folderPath := "/Users/elijahoyerinde/Documents/baby-crawler/data"
 	if err := os.MkdirAll(folderPath, 0755); err != nil {
+		log.Error().Err(err).Msgf("Error creating folder: %s\n", folderPath)
 		return err
 	}
 	fullPath := filepath.Join(folderPath, fileName)
 
 	file, err := os.Create(fullPath)
 	if err != nil {
-		fmt.Printf("Error creating file: %v\n", err)
+		log.Error().Err(err).Msgf("Error creating file: %s\n", fullPath)
 	}
 	defer file.Close()
 
 	if _, err := file.WriteString(parsedData.Text); err != nil {
-		fmt.Printf("Error writing to file: %v\n", err)
+		log.Error().Err(err).Msgf("Error writing to file: %s\n", fullPath)
+		return err
 	}
 
 	return nil

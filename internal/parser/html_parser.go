@@ -41,7 +41,5 @@ func (p *HTMLParser) Parse(ctx context.Context, r io.Reader) (shared.ParsedData,
 		case html.TextToken:
 			data.Text += strings.TrimSpace(token.Data) + " "
 		}
-
 	}
-
 }

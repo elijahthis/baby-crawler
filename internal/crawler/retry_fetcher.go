@@ -2,13 +2,13 @@ package crawler
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/elijahthis/baby-crawler/internal/shared"
+	"github.com/rs/zerolog/log"
 )
 
 const maxRetries = 10
@@ -24,7 +24,7 @@ func (rf *RetryFetcher) Fetch(ctx context.Context, url string) (shared.FetchResu
 	var lastErr error
 
 	for i := 0; i < rf.Retries; i++ {
-		fmt.Printf("Try %d: ", i+1)
+		log.Info().Msgf("Attempt %d: ", i+1)
 		resp, err := rf.Base.Fetch(ctx, url)
 		if err == nil {
 			if resp.StatusCode == http.StatusOK {
@@ -32,7 +32,7 @@ func (rf *RetryFetcher) Fetch(ctx context.Context, url string) (shared.FetchResu
 			}
 			// resp.Body.Close()
 		}
-		fmt.Printf("Error: %v\n", err)
+		log.Error().Err(err).Msg("Retry Error")
 
 		lastErr = err
 

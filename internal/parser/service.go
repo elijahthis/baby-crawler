@@ -3,12 +3,12 @@ package parser
 import (
 	"bytes"
 	"context"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/elijahthis/baby-crawler/internal/frontier"
 	"github.com/elijahthis/baby-crawler/internal/shared"
+	"github.com/rs/zerolog/log"
 )
 
 type Service struct {
@@ -39,7 +39,7 @@ func (s *Service) Run(ctx context.Context) {
 	}
 
 	wg.Wait()
-	log.Printf("All Parser workers shut down cleanly")
+	log.Info().Msg("All Parser workers shut down cleanly")
 }
 
 func (s *Service) worker(ctx context.Context, id int) {
@@ -56,14 +56,14 @@ func (s *Service) worker(ctx context.Context, id int) {
 
 			bodyBytes, err := s.storage.Load(ctx, msg.S3Key)
 			if err != nil {
-				log.Printf("Parser %d: Failed to load S3 key %s: %v", id, msg.S3Key, err)
+				log.Error().Err(err).Msgf("Parser %d: Failed to load S3 key %s", id, msg.S3Key)
 				continue
 			}
 
 			// process result
 			parsed, err := s.parser.Parse(ctx, bytes.NewReader(bodyBytes))
 			if err != nil {
-				log.Printf("Parser %d parse error: %v", id, err)
+				log.Error().Err(err).Msgf("Parser %d parse error", id)
 				continue
 			}
 
@@ -85,10 +85,12 @@ func (s *Service) worker(ctx context.Context, id int) {
 					}
 				}
 				if len(absoluteLinks) > 0 {
-					s.frontier.Push(ctx, absoluteLinks, msg.Depth+1)
+					if err := s.frontier.Push(ctx, absoluteLinks, msg.Depth+1); err != nil {
+						log.Error().Err(err).Msg("Frontier Push Error")
+					}
 				}
 			}
-			log.Printf("Parser %d: Processed %s (%d links)", id, msg.URL, len(parsed.Links))
+			log.Info().Msgf("Parser %d: Processed %s (%d links)", id, msg.URL, len(parsed.Links))
 		}
 	}
 }

@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"os"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/elijahthis/baby-crawler/internal/crawler"
 	"github.com/elijahthis/baby-crawler/internal/frontier"
 	"github.com/elijahthis/baby-crawler/internal/limiter"
 	"github.com/elijahthis/baby-crawler/internal/robots"
+	"github.com/elijahthis/baby-crawler/internal/shared"
 	"github.com/elijahthis/baby-crawler/internal/storage"
 	"github.com/redis/go-redis/v9"
 )
@@ -17,6 +20,11 @@ import (
 var userAgent = "BabyCrawler/1.0"
 
 func main() {
+	shared.InitLogger("crawler")
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+
+	log.Info().Msg("Starting Fetcher Service...")
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "password", // no password set
@@ -24,7 +32,7 @@ func main() {
 	})
 
 	fr := frontier.NewRedisFrontier(rdb)
-	log.Println("Frontier created")
+	log.Info().Msg("Frontier created")
 
 	baseFetcher := crawler.NewWebFetcher(userAgent, 5*time.Second)
 	fetcher := &crawler.RetryFetcher{
@@ -36,17 +44,17 @@ func main() {
 
 	store, err := storage.NewS3Storage(context.Background(), "crawled-data", "http://localhost:9000", "admin", "password")
 	if err != nil {
-		log.Fatalf("Failed to initialize storage: %v", err)
+		log.Fatal().Err(err).Msg("Failed to initialize storage")
 	}
 
 	robotChecker := robots.NewRobotsChecker(userAgent, 5*time.Second)
 
-	if err := fr.Push(context.Background(), []string{"https://grpc.io/docs/"}, 0); err != nil {
-		fmt.Printf("Error: %s", err.Error())
+	if err := fr.Push(context.Background(), []string{"https://lanre.wtf/"}, 0); err != nil {
+		log.Error().Err(err).Msg("Frontier Push Error")
 	}
 
 	// setup coordinator
 	coord := crawler.NewCoordinator(fr, fetcher, redisLimiter, store, robotChecker, 10)
-	log.Println("Starting fetch")
+	log.Info().Msg("Starting fetch")
 	coord.Run(context.Background())
 }
