@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"os"
-	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/elijahthis/baby-crawler/internal/frontier"
@@ -17,7 +14,6 @@ import (
 
 func main() {
 	shared.InitLogger("parser")
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",

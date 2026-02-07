@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"os"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/elijahthis/baby-crawler/internal/crawler"
@@ -21,7 +19,6 @@ var userAgent = "BabyCrawler/1.0"
 
 func main() {
 	shared.InitLogger("crawler")
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
 	log.Info().Msg("Starting Fetcher Service...")
 
