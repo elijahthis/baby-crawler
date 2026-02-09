@@ -55,6 +55,8 @@ func (c *Coordinator) Run(ctx context.Context) {
 }
 
 func (c *Coordinator) worker(ctx context.Context, id int) {
+	logger := log.With().Int("worker_id", id).Logger()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -67,42 +69,44 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 					// log.Printf("Error: %s", err.Error())
 					continue
 				}
-				log.Error().Err(err).Msgf("Worker %d frontier error:", id)
+				logger.Error().Err(err).Msgf("Worker %d frontier error:", id)
 				continue
 			}
 
+			itemLog := logger.With().Str("url", urlTarget.URL).Logger()
+
 			domain, err := shared.GetDomain(urlTarget.URL)
 			if err != nil {
-				log.Error().Err(err).Msgf("Invalid URL in queue: %s", urlTarget.URL)
+				itemLog.Error().Err(err).Msgf("Invalid URL in queue: %s", urlTarget.URL)
 				c.frontier.Complete(ctx, urlTarget.ID)
 				continue
 			}
 
 			if err := c.limiter.Wait(ctx, domain); err != nil {
-				log.Error().Err(err).Msg("Rate Limiter error: ")
+				itemLog.Error().Err(err).Msg("Rate Limiter error: ")
 				continue
 			}
 
 			if !c.robots.IsAllowed(urlTarget.URL) {
-				log.Error().Msgf("Blocked by robots.txt: %s", urlTarget.URL)
+				itemLog.Error().Msgf("Blocked by robots.txt: %s", urlTarget.URL)
 				c.frontier.Complete(ctx, urlTarget.ID)
 				continue
 			}
 
 			func() {
-				log.Printf("Worker %d fetching: %s", id, urlTarget.URL)
+				itemLog.Printf("Worker %d fetching: %s", id, urlTarget.URL)
 				resp, err := c.fetcher.Fetch(ctx, urlTarget.URL)
 				if err != nil {
-					log.Error().Err(err).Msgf("Worker %d Failed Final", id)
+					itemLog.Error().Err(err).Msgf("Worker %d Failed Final", id)
 					// retry logic. Dead letter queue
 					if dlqErr := c.frontier.PushDLQ(ctx, urlTarget, err.Error()); dlqErr != nil {
-						log.Error().Err(dlqErr).Msg("Failed to push to DLQ:")
+						itemLog.Error().Err(dlqErr).Msg("Failed to push to DLQ:")
 						return
 					}
 					return
 				}
 				if resp.Body == nil {
-					log.Error().Msgf("Worker %d error: Body is nil for %s", id, urlTarget.URL)
+					itemLog.Error().Msgf("Worker %d error: Body is nil for %s", id, urlTarget.URL)
 					c.frontier.PushDLQ(ctx, urlTarget, "Nil Body Response")
 					return
 				}
@@ -111,13 +115,13 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				// save to s3
 				bodyBytes, err := io.ReadAll(resp.Body)
 				if err != nil {
-					log.Error().Err(err).Msgf("Worker %d read error", id)
+					itemLog.Error().Err(err).Msgf("Worker %d read error", id)
 					return
 				}
 
 				s3Key := shared.CleanKey(urlTarget.URL)
 				if err := c.storage.Save(ctx, s3Key, bodyBytes); err != nil {
-					log.Error().Err(err).Msgf("Worker %d storage error", id)
+					itemLog.Error().Err(err).Msgf("Worker %d storage error", id)
 					c.frontier.PushDLQ(ctx, urlTarget, "Storage Upload Failed")
 					// maybe stop? will come back to this
 				}
@@ -129,9 +133,9 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 					Depth: urlTarget.Depth,
 				}
 				if err := c.frontier.PushToParser(ctx, msg); err != nil {
-					log.Error().Err(err).Msgf("Failed to push to parser queue")
+					itemLog.Error().Err(err).Msgf("Failed to push to parser queue")
 				} else {
-					log.Info().Msgf("Worker %d: Fetched & Pushed %s", id, urlTarget.URL)
+					itemLog.Info().Msgf("Worker %d: Fetched & Pushed %s", id, urlTarget.URL)
 				}
 
 				// HandleParsed(parsed, urlTarget.URL)

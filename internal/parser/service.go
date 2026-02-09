@@ -43,6 +43,7 @@ func (s *Service) Run(ctx context.Context) {
 }
 
 func (s *Service) worker(ctx context.Context, id int) {
+	logger := log.With().Int("parser_id", id).Logger()
 	for {
 		select {
 		case <-ctx.Done():
@@ -54,16 +55,18 @@ func (s *Service) worker(ctx context.Context, id int) {
 				continue
 			}
 
+			msgLog := logger.With().Str("url", msg.URL).Str("s3_key", msg.S3Key).Logger()
+
 			bodyBytes, err := s.storage.Load(ctx, msg.S3Key)
 			if err != nil {
-				log.Error().Err(err).Msgf("Parser %d: Failed to load S3 key %s", id, msg.S3Key)
+				msgLog.Error().Err(err).Msgf("Parser %d: Failed to load S3 key %s", id, msg.S3Key)
 				continue
 			}
 
 			// process result
 			parsed, err := s.parser.Parse(ctx, bytes.NewReader(bodyBytes))
 			if err != nil {
-				log.Error().Err(err).Msgf("Parser %d parse error", id)
+				msgLog.Error().Err(err).Msgf("Parser %d parse error", id)
 				continue
 			}
 
@@ -86,11 +89,11 @@ func (s *Service) worker(ctx context.Context, id int) {
 				}
 				if len(absoluteLinks) > 0 {
 					if err := s.frontier.Push(ctx, absoluteLinks, msg.Depth+1); err != nil {
-						log.Error().Err(err).Msg("Frontier Push Error")
+						msgLog.Error().Err(err).Msg("Frontier Push Error")
 					}
 				}
 			}
-			log.Info().Msgf("Parser %d: Processed %s (%d links)", id, msg.URL, len(parsed.Links))
+			msgLog.Info().Msgf("Parser %d: Processed %s (%d links)", id, msg.URL, len(parsed.Links))
 		}
 	}
 }

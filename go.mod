@@ -3,18 +3,19 @@ module github.com/elijahthis/baby-crawler
 go 1.25.6
 
 require (
+	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/aws/aws-sdk-go-v2 v1.41.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.0
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/rs/zerolog v1.34.0
+	github.com/spf13/cobra v1.10.2
 	github.com/temoto/robotstxt v1.1.2
 	golang.org/x/net v0.49.0
 )
 
 require (
-	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17 // indirect
@@ -35,7 +36,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 )
