@@ -1,4 +1,4 @@
-#BabyCrawler 🕷️
+# BabyCrawler 🕷️
 
 A high-performance, distributed web crawler built in Go.
 
