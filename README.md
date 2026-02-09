@@ -4,6 +4,9 @@
 
 **BabyCrawler** is a scalable, cloud-native web crawler designed to harvest billions of web pages. It decouples **Fetching** (Network I/O) from **Parsing** (CPU) to maximize throughput, using **Redis** for coordination and **S3/MinIO** for storage.
 
+## 💡 Inspo
+<img width="6433" height="4489" alt="Web Crawler deep" src="https://github.com/user-attachments/assets/446c06e9-25a7-49ea-9b58-9b6d9c2a731f" />
+
 ## 🏗️ Architecture
 
 BabyCrawler implements a Distributed Microservices Architecture using the Producer-Consumer and Claim Check patterns.
