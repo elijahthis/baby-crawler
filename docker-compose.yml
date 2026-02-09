@@ -1,14 +1,15 @@
 version: "3.8"
 
 services:
-  # The Brain (Queue & Dedup)
+  # --- Infrastructure ---
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: ["redis-server", "--save", "", "--appendonly", "no"] # Disables persistence to avoid the crash you saw earlier
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      - crawler-net
 
-  # The Storage (S3 Compatible)
   minio:
     image: minio/minio
     ports:
@@ -20,6 +21,78 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+    networks:
+      - crawler-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # --- Automation ---
+  # This ephemeral container runs once to create the 'crawled-data' bucket
+  create-buckets:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 admin password;
+      /usr/bin/mc mb myminio/crawled-data;
+      exit 0;
+      "
+    networks:
+      - crawler-net
+
+  # --- Your Services ---
+
+  # The Hunter (Fetcher)
+  fetcher:
+    build: .
+    # Overriding the default CMD to pass flags
+    command:
+      - "/app/fetcher"
+      - "--redis-addr=redis:6379"
+      - "--s3-endpoint=http://minio:9000"
+      - "--s3-bucket=crawled-data"
+      - "--s3-user=admin"
+      - "--s3-pass=password"
+      # Seed URL to start the crawl automatically
+      - "--seed=https://grpc.io/docs/"
+    depends_on:
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      create-buckets:
+        condition: service_completed_successfully
+    networks:
+      - crawler-net
+
+  # The Butcher (Parser)
+  parser:
+    build: .
+    # Overriding the default CMD to pass flags
+    command:
+      - "/app/parser"
+      - "--redis-addr=redis:6379"
+      - "--s3-endpoint=http://minio:9000"
+      - "--s3-bucket=crawled-data"
+      - "--s3-user=admin"
+      - "--s3-pass=password"
+    depends_on:
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      create-buckets:
+        condition: service_completed_successfully
+    networks:
+      - crawler-net
 
 volumes:
   minio_data:
+
+networks:
+  crawler-net:
