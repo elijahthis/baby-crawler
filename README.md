@@ -68,6 +68,29 @@ docker-compose up -d --scale parser=5 --no-recreate
 ### 🛠️ CLI Usage
 
 BabyCrawler is built with `cobra`, offering a robust CLI.
+
+#### Common Flags
+
+* `--redis-addr`: Address of Redis server (default: `localhost:6379`)
+* `--redis-pass`: Password for Redis
+* `--redis-db`: Redis DB number (default: `0`)
+* `--s3-endpoint`: S3 Endpoint URL (default: `http://localhost:9000`)
+* `--s3-bucket`: S3 Bucket name (default: `crawled-data`)
+* `--s3-user`: S3 Access Key / User (default: `admin`)
+* `--s3-pass`: S3 Secret Key / Password (default: `password`)
+
+
+#### Crawler Specific Flags
+
+* `--seed`: Comma-separated list of start URLs.
+* `--workers`: Number of crawler workers.
+
+
+#### Parser Specific Flags
+
+* `--workers`: Number of parser workers.
+
+
 #### The Fetcher (Crawler)
 
 ```bash
@@ -88,7 +111,6 @@ Flags:
 go run cmd/crawler/main.go --seed "https://github.com,https://google.com"
 ```
 
-
 #### The Parser
 ```bash
 go run cmd/parser/main.go --help
@@ -98,4 +120,21 @@ Usage:
 
 Flags:
       --redis-addr string   Address of Redis server (default "localhost:6379")
-      --s3-endpoint string  S3 Endpoint URL (default "http://localhost:9000")```
+      --s3-endpoint string  S3 Endpoint URL (default "http://localhost:9000")
+```
+
+
+## 🧪 Development
+### Running Locally
+If you want to run the Go binaries outside of Docker (for debugging), ensure you have Redis and MinIO running:
+
+```bash
+# Start Infra
+docker-compose up -d redis minio create-buckets
+
+# Run Crawler
+make run-crawler
+
+# Run Parser (in a separate terminal)
+make run-parser
+```
