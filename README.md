@@ -50,7 +50,7 @@ docker-compose up --build
 This will automatically:
 * Start Redis & MinIO.
 * Create the S3 bucket (crawled-data).
-* Launch the Fetcher (seeded with https://grpc.io/docs/).
+* Launch the Fetcher.
 * Launch the Parser.
 
 
