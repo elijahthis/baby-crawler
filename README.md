@@ -28,3 +28,9 @@ BabyCrawler implements a Distributed Microservices Architecture using the Produc
 * **Observability:** Structured JSON logging via zerolog.
 * **Cloud Native:** Fully containerized with Docker & Docker Compose.
 
+## 🚀 Getting Started
+
+### Prerequisites
+* Docker & Docker Compose
+* Go 1.21+ (Optional, for local dev)
+* Make (Optional)
