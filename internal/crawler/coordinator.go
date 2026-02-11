@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/elijahthis/baby-crawler/internal/frontier"
+	"github.com/elijahthis/baby-crawler/internal/metrics"
 	"github.com/elijahthis/baby-crawler/internal/robots"
 	"github.com/elijahthis/baby-crawler/internal/shared"
 )
@@ -26,9 +28,10 @@ type Coordinator struct {
 	storage  shared.Storage
 	robots   *robots.RobotsChecker
 	workers  int
+	metrics  *metrics.PrometheusMetrics
 }
 
-func NewCoordinator(f frontier.Frontier, fetch shared.Fetcher, l shared.RateLimiter, s shared.Storage, r *robots.RobotsChecker, workerCount int) *Coordinator {
+func NewCoordinator(f frontier.Frontier, fetch shared.Fetcher, l shared.RateLimiter, s shared.Storage, r *robots.RobotsChecker, workerCount int, met *metrics.PrometheusMetrics) *Coordinator {
 	return &Coordinator{
 		frontier: f,
 		fetcher:  fetch,
@@ -36,6 +39,7 @@ func NewCoordinator(f frontier.Frontier, fetch shared.Fetcher, l shared.RateLimi
 		storage:  s,
 		robots:   r,
 		workers:  workerCount,
+		metrics:  met,
 	}
 }
 
@@ -89,15 +93,23 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 
 			if !c.robots.IsAllowed(urlTarget.URL) {
 				itemLog.Error().Msgf("Blocked by robots.txt: %s", urlTarget.URL)
+				c.metrics.RobotsBlocked.WithLabelValues().Inc()
 				c.frontier.Complete(ctx, urlTarget.ID)
 				continue
 			}
 
 			func() {
 				itemLog.Printf("Worker %d fetching: %s", id, urlTarget.URL)
+
+				start := time.Now()
 				resp, err := c.fetcher.Fetch(ctx, urlTarget.URL)
+				duration := time.Since(start).Seconds()
+				c.metrics.FetchDuration.WithLabelValues().Observe(duration)
+
 				if err != nil {
 					itemLog.Error().Err(err).Msgf("Worker %d Failed Final", id)
+
+					c.metrics.FetchErrors.WithLabelValues(strconv.Itoa(resp.StatusCode), "network").Inc()
 					// retry logic. Dead letter queue
 					if dlqErr := c.frontier.PushDLQ(ctx, urlTarget, err.Error()); dlqErr != nil {
 						itemLog.Error().Err(dlqErr).Msg("Failed to push to DLQ:")
@@ -105,8 +117,14 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 					}
 					return
 				}
+
+				c.metrics.PagesFetched.WithLabelValues(strconv.Itoa(resp.StatusCode)).Inc()
+
 				if resp.Body == nil {
 					itemLog.Error().Msgf("Worker %d error: Body is nil for %s", id, urlTarget.URL)
+
+					c.metrics.FetchErrors.WithLabelValues(strconv.Itoa(resp.StatusCode), "nil body").Inc()
+
 					c.frontier.PushDLQ(ctx, urlTarget, "Nil Body Response")
 					return
 				}
@@ -120,8 +138,18 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				}
 
 				s3Key := shared.CleanKey(urlTarget.URL)
-				if err := c.storage.Save(ctx, s3Key, bodyBytes); err != nil {
+
+				startS3 := time.Now()
+				errS3 := c.storage.Save(ctx, s3Key, bodyBytes)
+				durationS3 := time.Since(startS3).Seconds()
+
+				c.metrics.S3AccessDuration.WithLabelValues("upload").Observe(durationS3)
+
+				if errS3 != nil {
 					itemLog.Error().Err(err).Msgf("Worker %d storage error", id)
+
+					c.metrics.S3AccessErrors.WithLabelValues("upload").Inc()
+
 					c.frontier.PushDLQ(ctx, urlTarget, "Storage Upload Failed")
 					// maybe stop? will come back to this
 				}
@@ -138,7 +166,6 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 					itemLog.Info().Msgf("Worker %d: Fetched & Pushed %s", id, urlTarget.URL)
 				}
 
-				// HandleParsed(parsed, urlTarget.URL)
 			}()
 
 			c.frontier.Complete(ctx, urlTarget.ID)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/elijahthis/baby-crawler/internal/frontier"
+	"github.com/elijahthis/baby-crawler/internal/metrics"
 	"github.com/elijahthis/baby-crawler/internal/shared"
 	"github.com/rs/zerolog/log"
 )
@@ -16,14 +17,16 @@ type Service struct {
 	storage  shared.Storage
 	parser   shared.Parser
 	workers  int
+	metrics  *metrics.PrometheusMetrics
 }
 
-func NewService(f frontier.Frontier, s shared.Storage, p shared.Parser, w int) *Service {
+func NewService(f frontier.Frontier, s shared.Storage, p shared.Parser, w int, met *metrics.PrometheusMetrics) *Service {
 	return &Service{
 		frontier: f,
 		storage:  s,
 		parser:   p,
 		workers:  w,
+		metrics:  met,
 	}
 }
 
@@ -57,18 +60,27 @@ func (s *Service) worker(ctx context.Context, id int) {
 
 			msgLog := logger.With().Str("url", msg.URL).Str("s3_key", msg.S3Key).Logger()
 
+			startS3 := time.Now()
 			bodyBytes, err := s.storage.Load(ctx, msg.S3Key)
+			durationS3 := time.Since(startS3).Seconds()
+
+			s.metrics.S3AccessDuration.WithLabelValues("download").Observe(durationS3)
+
 			if err != nil {
 				msgLog.Error().Err(err).Msgf("Parser %d: Failed to load S3 key %s", id, msg.S3Key)
+				s.metrics.S3AccessErrors.WithLabelValues("download").Inc()
 				continue
 			}
 
 			// process result
+			start := time.Now()
 			parsed, err := s.parser.Parse(ctx, bytes.NewReader(bodyBytes))
 			if err != nil {
 				msgLog.Error().Err(err).Msgf("Parser %d parse error", id)
 				continue
 			}
+			duration := time.Since(start).Seconds()
+			s.metrics.ParseDuration.WithLabelValues().Observe(duration)
 
 			if len(parsed.Links) > 0 {
 				var absoluteLinks []string
@@ -88,11 +100,15 @@ func (s *Service) worker(ctx context.Context, id int) {
 					}
 				}
 				if len(absoluteLinks) > 0 {
+					s.metrics.LinksFound.WithLabelValues().Add(float64(len(absoluteLinks)))
+
 					if err := s.frontier.Push(ctx, absoluteLinks, msg.Depth+1); err != nil {
 						msgLog.Error().Err(err).Msg("Frontier Push Error")
 					}
 				}
 			}
+			s.metrics.PagesParsed.WithLabelValues().Inc()
+
 			msgLog.Info().Msgf("Parser %d: Processed %s (%d links)", id, msg.URL, len(parsed.Links))
 		}
 	}

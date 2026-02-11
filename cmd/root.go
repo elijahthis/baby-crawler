@@ -42,6 +42,7 @@ func newCmdRootCrawler() *cobra.Command {
 	addCommonFlags(cmd)
 	cmd.Flags().StringSliceVar(&cfg.SeedURLs, "seed", []string{}, "Comma-separated list of start URLs")
 	cmd.Flags().IntVar(&cfg.CrawlerWorkerCount, "workers", 10, "Number of crawler workers")
+	cmd.Flags().IntVar(&cfg.CrawlerMetricsPort, "metrics-port", 9090, "Port for Metrics server")
 
 	cmd.PersistentFlags().Bool("help", false, "Show help for crawler command")
 	return cmd
@@ -70,6 +71,7 @@ func newCmdRootParser() *cobra.Command {
 
 	addCommonFlags(cmd)
 	cmd.Flags().IntVar(&cfg.ParserWorkerCount, "workers", 10, "Number of parser workers")
+	cmd.Flags().IntVar(&cfg.ParserMetricsPort, "metrics-port", 9091, "Port for Metrics server")
 
 	cmd.PersistentFlags().Bool("help", false, "Show help for parser command")
 	return cmd

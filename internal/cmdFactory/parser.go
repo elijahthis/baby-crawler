@@ -1,7 +1,10 @@
 package cmdfactory
 
 import (
+	"strconv"
+
 	"github.com/elijahthis/baby-crawler/internal/frontier"
+	"github.com/elijahthis/baby-crawler/internal/metrics"
 	"github.com/elijahthis/baby-crawler/internal/parser"
 	"github.com/elijahthis/baby-crawler/internal/shared"
 	"github.com/redis/go-redis/v9"
@@ -23,6 +26,9 @@ func ParserNew(cfg *Config) *parserFactory {
 		DB:       cfg.RedisDB,
 	})
 
+	met := metrics.NewMetrics()
+	go metrics.StartNewMetricsServer(":" + strconv.Itoa(cfg.ParserMetricsPort))
+
 	f := &parserFactory{
 		commonFactory: &commonFactory{
 			RDB:         rdb,
@@ -33,6 +39,7 @@ func ParserNew(cfg *Config) *parserFactory {
 
 	f.Frontier = newFrontier(f.commonFactory)
 	f.Parser = newParser()
+	f.Metrics = met
 
 	f.Store = newStorage(cfg)
 	f.Coordinator = newService(f)
@@ -47,6 +54,6 @@ func newParser() shared.Parser {
 }
 
 func newService(f *parserFactory) *parser.Service {
-	coord := parser.NewService(f.Frontier, f.Store, f.Parser, f.workerCount)
+	coord := parser.NewService(f.Frontier, f.Store, f.Parser, f.workerCount, f.Metrics)
 	return coord
 }

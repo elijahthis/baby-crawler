@@ -28,9 +28,11 @@ type Config struct {
 	// Crawler Specific
 	SeedURLs           []string // Only used by Crawler
 	CrawlerWorkerCount int
+	CrawlerMetricsPort int
 
 	// Parser Specific
 	ParserWorkerCount int
+	ParserMetricsPort int
 }
 
 func newFetcher(f *commonFactory) shared.Fetcher {
