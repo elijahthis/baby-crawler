@@ -10,23 +10,25 @@ import (
 
 type RedisRateLimiter struct {
 	client *redis.Client
-	delay  time.Duration
 }
 
-func NewRedisRateLimiter(rdb *redis.Client, delay time.Duration) *RedisRateLimiter {
+func NewRedisRateLimiter(rdb *redis.Client) *RedisRateLimiter {
 	return &RedisRateLimiter{
 		client: rdb,
-		delay:  delay,
 	}
 }
 
-func (rl *RedisRateLimiter) Wait(ctx context.Context, domain string) error {
+func (rl *RedisRateLimiter) Wait(ctx context.Context, domain string, delay time.Duration) error {
+	if delay < 100*time.Millisecond {
+		delay = 100 * time.Millisecond
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			success, err := rl.client.SetNX(ctx, domain, 1, rl.delay).Result()
+			success, err := rl.client.SetNX(ctx, domain, 1, delay).Result()
 			if err != nil {
 				return err
 			}

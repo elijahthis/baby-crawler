@@ -29,28 +29,10 @@ func (r *RobotsChecker) IsAllowed(targetURL string) bool {
 	u, err := url.Parse(targetURL)
 	if err != nil {
 		log.Error().Err(err).Msgf("Unable to parse targetURL %s", targetURL)
-		return false
+		return true
 	}
 
-	domain := u.Host
-	scheme := u.Scheme
-
-	r.mu.RLock()
-	group, exists := r.cache[domain]
-	r.mu.RUnlock()
-
-	if exists {
-		if group == nil {
-			return true
-		}
-		return group.Test(u.Path)
-	}
-
-	group = r.fetchRobotsTxt(scheme, domain)
-
-	r.mu.Lock()
-	r.cache[domain] = group
-	r.mu.Unlock()
+	group := r.fetchGroup(targetURL)
 
 	if group == nil {
 		return true
@@ -62,7 +44,7 @@ func (r *RobotsChecker) fetchRobotsTxt(scheme, domain string) *robotstxt.Group {
 	robotsURL := scheme + "://" + domain + "/robots.txt"
 	resp, err := r.client.Get(robotsURL)
 	if err != nil {
-		log.Error().Err(err).Msgf("No robots.txt found")
+		log.Debug().Err(err).Msgf("Failed to fetch robots.txt for %s", domain)
 		return nil
 	}
 
@@ -78,4 +60,40 @@ func (r *RobotsChecker) fetchRobotsTxt(scheme, domain string) *robotstxt.Group {
 	}
 
 	return data.FindGroup(r.userAgent)
+}
+
+func (r *RobotsChecker) fetchGroup(targetURL string) *robotstxt.Group {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		log.Error().Err(err).Msgf("Unable to parse targetURL %s", targetURL)
+		return nil
+	}
+
+	domain := u.Host
+	scheme := u.Scheme
+
+	r.mu.RLock()
+	group, exists := r.cache[domain]
+	r.mu.RUnlock()
+
+	if exists {
+		return group
+	}
+
+	group = r.fetchRobotsTxt(scheme, domain)
+
+	r.mu.Lock()
+	r.cache[domain] = group
+	r.mu.Unlock()
+
+	return group
+}
+
+func (r *RobotsChecker) GetCrawlDelay(targetURL string) time.Duration {
+	group := r.fetchGroup(targetURL)
+
+	if group == nil {
+		return 0
+	}
+	return group.CrawlDelay
 }

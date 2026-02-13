@@ -52,7 +52,7 @@ func newFrontier(f *commonFactory) frontier.Frontier {
 }
 
 func newRateLimiter(f *commonFactory) shared.RateLimiter {
-	redisLimiter := limiter.NewRedisRateLimiter(f.RDB, 1*time.Second)
+	redisLimiter := limiter.NewRedisRateLimiter(f.RDB)
 	return redisLimiter
 }
 

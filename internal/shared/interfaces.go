@@ -3,6 +3,7 @@ package shared
 import (
 	"context"
 	"io"
+	"time"
 )
 
 // interfaces
@@ -13,7 +14,7 @@ type Parser interface {
 	Parse(ctx context.Context, r io.Reader) (ParsedData, error)
 }
 type RateLimiter interface {
-	Wait(ctx context.Context, domain string) error
+	Wait(ctx context.Context, domain string, delay time.Duration) error
 }
 type Storage interface {
 	Save(ctx context.Context, key string, data []byte) error

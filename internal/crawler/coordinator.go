@@ -86,15 +86,22 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				continue
 			}
 
-			if err := c.limiter.Wait(ctx, domain); err != nil {
-				itemLog.Error().Err(err).Msg("Rate Limiter error: ")
-				continue
-			}
-
 			if !c.robots.IsAllowed(urlTarget.URL) {
 				itemLog.Error().Msgf("Blocked by robots.txt: %s", urlTarget.URL)
 				c.metrics.RobotsBlocked.WithLabelValues().Inc()
 				c.frontier.Complete(ctx, urlTarget.ID)
+				continue
+			}
+
+			delay := c.robots.GetCrawlDelay(urlTarget.URL)
+
+			defaultDelay := 1 * time.Second
+			if delay < defaultDelay {
+				delay = defaultDelay
+			}
+
+			if err := c.limiter.Wait(ctx, domain, delay); err != nil {
+				itemLog.Error().Err(err).Msg("Rate Limiter error: ")
 				continue
 			}
 
