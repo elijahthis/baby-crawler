@@ -32,6 +32,7 @@ BabyCrawler implements a Distributed Microservices Architecture using the Produc
 * **Storage Efficient:** Uses Claim Check Pattern to keep Redis lightweight (HTML stored in S3).
 * **Observability:** Structured JSON logging via zerolog.
 * **Cloud Native:** Fully containerized with Docker & Docker Compose.
+* **Metrics:** Prometheus Metrics.
 
 ## 🚀 Getting Started
 
