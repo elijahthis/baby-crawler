@@ -34,9 +34,9 @@ BabyCrawler implements a Distributed Microservices Architecture using the Produc
 * **Cloud Native:** Fully containerized with Docker & Docker Compose.
 * **Metrics:** Prometheus Metrics.
 
-## 🏗️ Architecture
+## Use Cases
 Best Use: Highly efficient fetching / storing of static content
-* Collecting data for LLM datasets
+* Collecting high volume of data for LLM datasets
 * SEO / Link analysis (site graphs, finding broken links, etc.)
 * Web archiving
 * Vulnerability Scanning (filtering for secrets, keys, etc.)
