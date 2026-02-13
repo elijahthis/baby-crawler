@@ -13,20 +13,22 @@ import (
 )
 
 type Service struct {
-	frontier frontier.Frontier
-	storage  shared.Storage
-	parser   shared.Parser
-	workers  int
-	metrics  *metrics.PrometheusMetrics
+	frontier         frontier.Frontier
+	storage          shared.Storage
+	parser           shared.Parser
+	workers          int
+	metrics          *metrics.PrometheusMetrics
+	crawlCrossDomain bool
 }
 
-func NewService(f frontier.Frontier, s shared.Storage, p shared.Parser, w int, met *metrics.PrometheusMetrics) *Service {
+func NewService(f frontier.Frontier, s shared.Storage, p shared.Parser, w int, met *metrics.PrometheusMetrics, crawlCrossDomain bool) *Service {
 	return &Service{
-		frontier: f,
-		storage:  s,
-		parser:   p,
-		workers:  w,
-		metrics:  met,
+		frontier:         f,
+		storage:          s,
+		parser:           p,
+		workers:          w,
+		metrics:          met,
+		crawlCrossDomain: crawlCrossDomain,
 	}
 }
 
@@ -90,14 +92,13 @@ func (s *Service) worker(ctx context.Context, id int) {
 						continue
 					}
 
-					isSameDomain, err := shared.CompareDomains(msg.URL, abs)
-					if err != nil {
-						continue
+					if !s.crawlCrossDomain {
+						isSameDomain, err := shared.CompareDomains(msg.URL, abs)
+						if err != nil || !isSameDomain {
+							continue
+						}
 					}
-
-					if isSameDomain {
-						absoluteLinks = append(absoluteLinks, abs)
-					}
+					absoluteLinks = append(absoluteLinks, abs)
 				}
 				if len(absoluteLinks) > 0 {
 					s.metrics.LinksFound.WithLabelValues().Add(float64(len(absoluteLinks)))

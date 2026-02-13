@@ -4,11 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -178,34 +174,4 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 			c.frontier.Complete(ctx, urlTarget.ID)
 		}
 	}
-}
-
-func HandleParsed(parsedData shared.ParsedData, link string) error {
-	urlObj, err := url.Parse(link)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error parsing link: %s\n", link)
-		return err
-	}
-	filePath := urlObj.Path
-	fileName := strings.ReplaceAll(filePath, "/", "_")
-
-	folderPath := "/Users/elijahoyerinde/Documents/baby-crawler/data"
-	if err := os.MkdirAll(folderPath, 0755); err != nil {
-		log.Error().Err(err).Msgf("Error creating folder: %s\n", folderPath)
-		return err
-	}
-	fullPath := filepath.Join(folderPath, fileName)
-
-	file, err := os.Create(fullPath)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error creating file: %s\n", fullPath)
-	}
-	defer file.Close()
-
-	if _, err := file.WriteString(parsedData.Text); err != nil {
-		log.Error().Err(err).Msgf("Error writing to file: %s\n", fullPath)
-		return err
-	}
-
-	return nil
 }

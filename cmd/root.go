@@ -72,6 +72,7 @@ func newCmdRootParser() *cobra.Command {
 	addCommonFlags(cmd)
 	cmd.Flags().IntVar(&cfg.ParserWorkerCount, "workers", 10, "Number of parser workers")
 	cmd.Flags().IntVar(&cfg.ParserMetricsPort, "metrics-port", 9191, "Port for Metrics server")
+	cmd.Flags().BoolVar(&cfg.CrawlCrossDomain, "cross-domain", false, "Allow Crawler to crawl links across different domains")
 
 	cmd.PersistentFlags().Bool("help", false, "Show help for parser command")
 	return cmd

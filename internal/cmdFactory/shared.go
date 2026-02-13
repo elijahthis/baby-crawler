@@ -29,6 +29,7 @@ type Config struct {
 	SeedURLs           []string // Only used by Crawler
 	CrawlerWorkerCount int
 	CrawlerMetricsPort int
+	CrawlCrossDomain   bool
 
 	// Parser Specific
 	ParserWorkerCount int

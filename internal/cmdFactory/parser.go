@@ -15,8 +15,9 @@ type parserFactory struct {
 	Frontier frontier.Frontier
 	Parser   shared.Parser
 
-	Store       shared.Storage
-	Coordinator *parser.Service
+	Store            shared.Storage
+	Coordinator      *parser.Service
+	CrawlCrossDomain bool
 }
 
 func ParserNew(cfg *Config) *parserFactory {
@@ -35,6 +36,7 @@ func ParserNew(cfg *Config) *parserFactory {
 			userAgent:   "BabyCrawler/1.0",
 			workerCount: cfg.ParserWorkerCount,
 		},
+		CrawlCrossDomain: cfg.CrawlCrossDomain,
 	}
 
 	f.Frontier = newFrontier(f.commonFactory)
@@ -54,6 +56,6 @@ func newParser() shared.Parser {
 }
 
 func newService(f *parserFactory) *parser.Service {
-	coord := parser.NewService(f.Frontier, f.Store, f.Parser, f.workerCount, f.Metrics)
+	coord := parser.NewService(f.Frontier, f.Store, f.Parser, f.workerCount, f.Metrics, f.CrawlCrossDomain)
 	return coord
 }
