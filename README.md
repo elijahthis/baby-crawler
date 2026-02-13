@@ -1,6 +1,6 @@
 # BabyCrawler 🕷️
 
-&emsp;A high-performance, distributed web crawler built in Go.
+&emsp;A high-performance, distributed, not-so-baby web crawler built in Go.
 
 **BabyCrawler** is a scalable, cloud-native web crawler designed to harvest billions of web pages. It decouples **Fetching** (Network I/O) from **Parsing** (CPU) to maximize throughput, using **Redis** for coordination and **S3/MinIO** for storage.
 
