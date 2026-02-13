@@ -83,13 +83,14 @@ docker-compose up -d --scale parser=5 --no-recreate
 BabyCrawler is built with `cobra`, offering a robust CLI.
 
 
-#### Common Flags
+#### Common Flags (Crawler AND Parser)
 
 * `--redis-addr`: Address of Redis server (default: `localhost:6379`)
 * `--redis-pass`: Password for Redis
 * `--redis-db`: Redis DB number (default: `0`)
 * `--s3-endpoint`: S3 Endpoint URL (default: `http://localhost:9000`)
 * `--s3-bucket`: S3 Bucket name (default: `crawled-data`)
+* `--s3-region`: S3 Region (default: `us-east-1`)
 * `--s3-user`: S3 Access Key / User (default: `admin`)
 * `--s3-pass`: S3 Secret Key / Password (default: `password`)
 
