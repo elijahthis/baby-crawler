@@ -24,6 +24,7 @@ type Config struct {
 	S3Bucket   string
 	S3User     string
 	S3Password string
+	S3Region   string
 
 	// Crawler Specific
 	SeedURLs           []string // Only used by Crawler
@@ -63,7 +64,7 @@ func newRobot(f *commonFactory) *robots.RobotsChecker {
 }
 
 func newStorage(cfg *Config) shared.Storage {
-	store, err := storage.NewS3Storage(context.Background(), cfg.S3Bucket, cfg.S3Endpoint, cfg.S3User, cfg.S3Password)
+	store, err := storage.NewS3Storage(context.Background(), cfg.S3Bucket, cfg.S3Endpoint, cfg.S3Region, cfg.S3User, cfg.S3Password)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize storage")
 	}

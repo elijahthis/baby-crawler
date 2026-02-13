@@ -90,6 +90,7 @@ func addCommonFlags(cmd *cobra.Command) {
 	// MinIO / S3
 	cmd.Flags().StringVar(&cfg.S3Endpoint, "s3-endpoint", "http://localhost:9000", "S3 Endpoint URL")
 	cmd.Flags().StringVar(&cfg.S3Bucket, "s3-bucket", "crawled-data", "S3 Bucket name")
+	cmd.Flags().StringVar(&cfg.S3Region, "s3-region", "us-east-1", "S3 Region")
 	cmd.Flags().StringVar(&cfg.S3User, "s3-user", "admin", "S3 Access Key / User")
 	cmd.Flags().StringVar(&cfg.S3Password, "s3-pass", "password", "S3 Secret Key / Password")
 

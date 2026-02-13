@@ -17,7 +17,7 @@ type S3Storage struct {
 	bucket string
 }
 
-func NewS3Storage(ctx context.Context, bucket string, endpoint, user, password string) (*S3Storage, error) {
+func NewS3Storage(ctx context.Context, bucket, endpoint, region, user, password string) (*S3Storage, error) {
 	creds := credentials.NewStaticCredentialsProvider(user, password, "")
 	const defaultRegion = "us-east-1"
 
@@ -28,12 +28,13 @@ func NewS3Storage(ctx context.Context, bucket string, endpoint, user, password s
 
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithCredentialsProvider(creds),
-		config.WithRegion("us-east-1"),
+		config.WithRegion(region),
 		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
 			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 				return aws.Endpoint{
 					URL:               endpoint, // e.g. "http://localhost:9000"
 					HostnameImmutable: true,     // Required for MinIO
+					SigningRegion:     region,
 				}, nil
 			},
 		)),

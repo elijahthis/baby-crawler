@@ -149,7 +149,7 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 				c.metrics.S3AccessDuration.WithLabelValues("upload").Observe(durationS3)
 
 				if errS3 != nil {
-					itemLog.Error().Err(err).Msgf("Worker %d storage error", id)
+					itemLog.Error().Err(err).Msgf("Worker %d storage error: %s", id, errS3)
 
 					c.metrics.S3AccessErrors.WithLabelValues("upload").Inc()
 
