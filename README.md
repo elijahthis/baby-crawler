@@ -87,11 +87,13 @@ BabyCrawler is built with `cobra`, offering a robust CLI.
 
 * `--seed`: Comma-separated list of start URLs.
 * `--workers`: Number of crawler workers.
+* `--metrics-port`: Port for Metrics server (crawler).
 
 
 #### Parser Specific Flags
 
 * `--workers`: Number of parser workers.
+* `--metrics-port`: Port for Metrics server (parser).
 
 
 #### The Fetcher (Crawler)
