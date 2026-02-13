@@ -34,6 +34,15 @@ BabyCrawler implements a Distributed Microservices Architecture using the Produc
 * **Cloud Native:** Fully containerized with Docker & Docker Compose.
 * **Metrics:** Prometheus Metrics.
 
+## 🏗️ Architecture
+Best Use: Highly efficient fetching / storing of static content
+* Collecting data for LLM datasets
+* SEO / Link analysis (site graphs, finding broken links, etc.)
+* Web archiving
+* Vulnerability Scanning (filtering for secrets, keys, etc.)
+
+This project is under an MIT license. Please feel free to reach out if you find other creative uses for this project.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -72,6 +81,7 @@ docker-compose up -d --scale parser=5 --no-recreate
 ### 🛠️ CLI Usage
 
 BabyCrawler is built with `cobra`, offering a robust CLI.
+
 
 #### Common Flags
 
