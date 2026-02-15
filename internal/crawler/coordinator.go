@@ -155,6 +155,7 @@ func (c *Coordinator) worker(ctx context.Context, id int) {
 
 					c.frontier.PushDLQ(ctx, urlTarget, "Storage Upload Failed")
 					// maybe stop? will come back to this
+					return
 				}
 
 				// Push to Parser Queue
